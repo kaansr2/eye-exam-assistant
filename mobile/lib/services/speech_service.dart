@@ -138,11 +138,12 @@ class SpeechService {
   /// Türkçe dil desteği var mı kontrol et
   Future<bool> hasTurkishSupport() async {
     final locales = await getAvailableLocales();
-    return locales.any((l) => 
-      l.localeId.toLowerCase().contains('tr') ||
-      l.name.toLowerCase().contains('türk') ||
-      l.name.toLowerCase().contains('turk')
-    );
+    // Exact locale matching for Turkish variants
+    const turkishLocales = ['tr-TR', 'tr_TR', 'tr'];
+    return locales.any((l) {
+      final localeId = l.localeId.toLowerCase();
+      return turkishLocales.any((tl) => localeId == tl.toLowerCase() || localeId.startsWith('tr-') || localeId.startsWith('tr_'));
+    });
   }
 
   /// Servisi temizle

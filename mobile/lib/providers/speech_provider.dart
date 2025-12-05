@@ -105,6 +105,12 @@ class SpeechProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Hata mesajını temizle
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   /// Transkripsiyon ekle (manuel)
   void addTranscription(String text) {
     if (text.isEmpty) return;

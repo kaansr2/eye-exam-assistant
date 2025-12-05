@@ -239,7 +239,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 onPressed: () {
-                  // Hatayı temizle - provider'da metod eklenebilir
+                  context.read<SpeechProvider>().clearError();
                 },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

@@ -1,5 +1,18 @@
 /// Tıbbi terim tanıma ve düzeltme için yardımcı sınıf
 /// Göz hastalıkları için özel terim listesi
+/// 
+/// Bu sınıf, ses tanıma ile elde edilen metinlerdeki tıbbi terimleri
+/// standart formata dönüştürür ve değerleri çıkarır.
+/// 
+/// Kullanım örneği:
+/// ```dart
+/// String text = "göz içi basıncı 18 milimetre civa";
+/// String corrected = MedicalTerms.correctText(text);
+/// // corrected: "IOP: 18 mmHg"
+/// 
+/// Map<String, dynamic> values = MedicalTerms.extractValues(text);
+/// // values: {'iop': 18}
+/// ```
 class MedicalTerms {
   /// Görme keskinliği terimleri
   static const Map<String, String> visionTerms = {
@@ -179,15 +192,31 @@ class MedicalTerms {
     };
   }
 
+  // Pre-compiled regex patterns cache
+  static final Map<String, RegExp> _compiledPatterns = {};
+
+  /// Pre-compile regex patterns for better performance
+  static RegExp _getPattern(String key) {
+    return _compiledPatterns.putIfAbsent(
+      key,
+      () => RegExp(r'\b' + RegExp.escape(key) + r'\b', caseSensitive: false),
+    );
+  }
+
   /// Metni tıbbi terimlerle düzelt
+  /// Performs efficient string replacement using pre-compiled regex patterns
   static String correctText(String text) {
     String corrected = text.toLowerCase();
 
-    // Tıbbi terimleri düzelt
-    allTerms.forEach((key, value) {
-      final pattern = RegExp(r'\b' + RegExp.escape(key) + r'\b', caseSensitive: false);
-      corrected = corrected.replaceAllMapped(pattern, (match) => value);
-    });
+    // Sort terms by length descending to match longer phrases first
+    final sortedEntries = allTerms.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+
+    // Tıbbi terimleri düzelt using pre-compiled patterns
+    for (final entry in sortedEntries) {
+      final pattern = _getPattern(entry.key);
+      corrected = corrected.replaceAllMapped(pattern, (match) => entry.value);
+    }
 
     // Özel düzeltmeler
     corrected = _applySpecialCorrections(corrected);
