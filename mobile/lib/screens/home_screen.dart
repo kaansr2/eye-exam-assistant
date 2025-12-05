@@ -97,19 +97,12 @@ class HomeScreen extends StatelessWidget {
   /// Son muayeneler listesi (placeholder)
   Widget _buildRecentExaminationsList() {
     // TODO: Gerçek verilerle değiştir
-    return ListView.builder(
-      itemCount: 0, // Başlangıçta boş
-      itemBuilder: (context, index) {
-        return const SizedBox.shrink();
-      },
-      // Boş liste durumunda mesaj göster
-    ).buildEmpty();
+    // Şu an için boş liste göster
+    return _buildEmptyState();
   }
-}
 
-/// ListView uzantısı - boş durumu göstermek için
-extension ListViewExtension on ListView {
-  Widget buildEmpty() {
+  /// Boş durum widget'ı
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
