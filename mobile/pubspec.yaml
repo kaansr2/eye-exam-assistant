@@ -1,0 +1,30 @@
+name: eye_exam_assistant
+description: Göz muayenesi için sesli asistan ve AI destekli analiz sistemi
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  provider: ^6.1.1                    # State management
+  http: ^1.1.0                        # API çağrıları
+  speech_to_text: ^6.6.0              # Ses tanıma
+  camera: ^0.10.5+9                   # Kamera
+  image_picker: ^1.0.7                # Galeri/kamera seçimi
+  permission_handler: ^11.3.0         # İzin yönetimi
+  intl: ^0.18.1                       # Tarih formatları
+  shared_preferences: ^2.2.2          # Yerel depolama
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
