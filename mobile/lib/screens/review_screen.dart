@@ -475,15 +475,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: imagePath != null && File(imagePath).existsSync()
-                            ? Image.file(
-                                File(imagePath),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(Icons.broken_image, color: Colors.grey[600], size: 32);
-                                },
-                              )
-                            : Icon(Icons.image, color: Colors.grey[600], size: 32),
+                        child: _buildImageWidget(imagePath),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -499,6 +491,41 @@ class _ReviewScreenState extends State<ReviewScreen> {
               );
             },
           ),
+        );
+      },
+    );
+  }
+
+  /// Build image widget with error handling
+  Widget _buildImageWidget(String? imagePath) {
+    if (imagePath == null) {
+      return Icon(Icons.image, color: Colors.grey[600], size: 32);
+    }
+
+    // Use FutureBuilder to handle async file existence check
+    return FutureBuilder<bool>(
+      future: File(imagePath).exists(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || snapshot.data != true) {
+          return Icon(Icons.broken_image, color: Colors.grey[600], size: 32);
+        }
+
+        return Image.file(
+          File(imagePath),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(Icons.broken_image, color: Colors.grey[600], size: 32);
+          },
         );
       },
     );

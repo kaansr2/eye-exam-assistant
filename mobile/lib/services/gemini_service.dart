@@ -172,21 +172,9 @@ Yanıtı JSON formatında ver:
     }
     results['gorsel_analizler'] = imageAnalyses;
 
-    // Overall confidence score - calculate from analyses if available
-    // For now, return null if no analyses succeeded
-    double? overallConfidence;
-    if (results.containsKey('metin_analiz') || imageAnalyses.isNotEmpty) {
-      // TODO: Calculate actual confidence from analysis results
-      // This is a placeholder and should be replaced with actual logic
-      overallConfidence = null;
-    }
-    
-    if (overallConfidence != null) {
-      results['guven_skoru'] = overallConfidence;
-    }
-
-    // Suggested diagnoses (would be extracted from AI response)
-    results['onerilen_tanilar'] = <String>[];
+    // Note: Confidence score and diagnoses extraction from AI responses
+    // will be implemented when actual JSON parsing is added
+    // For now, these remain empty/null to avoid placeholder values
 
     results['timestamp'] = DateTime.now().toIso8601String();
 
