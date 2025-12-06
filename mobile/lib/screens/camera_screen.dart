@@ -183,54 +183,56 @@ class _CameraScreenState extends State<CameraScreen> {
             ],
           ),
           body: SafeArea(
-        child: Column(
-          children: [
-            // Kamera önizleme alanı
-            Expanded(
-              flex: 3,
-              child: _buildCameraPreview(),
-            ),
-            
-            // Göz seçimi ve kontroller
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(AppConfig.defaultPadding),
-                child: Column(
-                  children: [
-                    // Göz seçimi
-                    _buildEyeSelector(),
-                    
-                    const SizedBox(height: AppConfig.defaultPadding),
-                    
-                    // Çekilen fotoğraflar
-                    if (_capturedImages.isNotEmpty)
-                      Expanded(
-                        child: _buildCapturedImagesList(),
-                      )
-                    else
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            'Henüz fotoğraf çekilmedi',
-                            style: TextStyle(
-                              color: Colors.grey[600],
+            child: Column(
+              children: [
+                // Kamera önizleme alanı
+                Expanded(
+                  flex: 3,
+                  child: _buildCameraPreview(),
+                ),
+                
+                // Göz seçimi ve kontroller
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppConfig.defaultPadding),
+                    child: Column(
+                      children: [
+                        // Göz seçimi
+                        _buildEyeSelector(),
+                        
+                        const SizedBox(height: AppConfig.defaultPadding),
+                        
+                        // Çekilen fotoğraflar
+                        if (capturedImages.isNotEmpty)
+                          Expanded(
+                            child: _buildCapturedImagesList(capturedImages),
+                          )
+                        else
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                'Henüz fotoğraf çekilmedi',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    
-                    const SizedBox(height: AppConfig.defaultPadding),
-                    
-                    // Çekim butonu
-                    _buildCaptureButton(),
-                  ],
+                        
+                        const SizedBox(height: AppConfig.defaultPadding),
+                        
+                        // Çekim butonu
+                        _buildCaptureButtons(),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
