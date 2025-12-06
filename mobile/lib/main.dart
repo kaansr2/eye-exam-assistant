@@ -16,12 +16,13 @@ import 'providers/examination_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Load .env file if it exists, otherwise continue without it
+  // Try to load .env file from file system (for development)
+  // In production, the app will work without .env using demo mode
   try {
     await dotenv.load(fileName: '.env');
   } catch (e) {
     // .env file doesn't exist or couldn't be loaded - this is OK
-    // App will work in demo mode
+    // App will work in demo mode without API key
     debugPrint('Note: .env file not loaded ($e) - API features will use demo mode');
   }
   

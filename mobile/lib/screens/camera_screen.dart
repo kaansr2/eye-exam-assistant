@@ -145,12 +145,6 @@ class _CameraScreenState extends State<CameraScreen> {
     context.read<ExaminationProvider>().removeEyeImage(index);
   }
 
-  /// Fotoğrafları atla ve devam et
-  void _skipPhotos() {
-    // Simply proceed to review without photos
-    Navigator.pushNamed(context, '/review');
-  }
-
   /// Onay ekranına git
   void _proceedToReview() {
     Navigator.pushNamed(context, '/review');
@@ -449,7 +443,7 @@ class _CameraScreenState extends State<CameraScreen> {
         
         // Atla butonu
         TextButton(
-          onPressed: _skipPhotos,
+          onPressed: _proceedToReview,
           child: const Text('Fotoğrafsız Devam Et'),
         ),
       ],

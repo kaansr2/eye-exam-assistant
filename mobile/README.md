@@ -13,9 +13,11 @@ Bu mobil uygulama, göz doktorlarının muayene sırasında sesli kayıt ve AI d
 - ✅ `.env.example` referans dosyası oluşturuldu
 
 **Kullanım:**
-1. `.env.example` dosyasını `.env` olarak kopyalayın
+1. `.env.example` dosyasını proje kök dizinine `.env` olarak kopyalayın
 2. `GEMINI_API_KEY=your_actual_key` şeklinde API key'inizi ekleyin
 3. Uygulamayı yeniden başlatın
+
+**Önemli:** `.env` dosyası uygulama paketine (APK) dahil edilmez, sadece geliştirme sırasında kullanılır. Production'da environment variables veya secure storage kullanın.
 
 **Demo Mod:** API key yoksa uygulama demo modda çalışır, AI analiz fonksiyonları örnek yanıt döndürür.
 
@@ -68,11 +70,14 @@ cd mobile
 flutter pub get
 ```
 
-2. **API Key ayarlayın (opsiyonel):**
+2. **API Key ayarlayın (opsiyonel - sadece geliştirme için):**
 ```bash
+# .env dosyası sadece geliştirme için kullanılır
 cp .env.example .env
 # .env dosyasını düzenleyin ve API key'inizi ekleyin
 ```
+
+**Not:** Production'da `.env` dosyası kullanılmaz. API key'i `--dart-define` ile build sırasında veya secure storage ile runtime'da sağlayın.
 
 3. **Uygulamayı çalıştırın:**
 ```bash

@@ -40,6 +40,27 @@ class TranscriptParser {
     RegExp(r'solda.*?(\d+)(?:\s*mmhg)?', caseSensitive: false),
   ];
 
+  // Regex patterns for medical conditions
+  static final _medicalConditionPatterns = {
+    'katarakt': RegExp(r'katarakt', caseSensitive: false),
+    'glokom': RegExp(r'glokom', caseSensitive: false),
+    'miyopi': RegExp(r'miyop|miyopi', caseSensitive: false),
+    'hipermetropi': RegExp(r'hipermetrop|hipermetropi', caseSensitive: false),
+    'astigmatizma': RegExp(r'astigmat', caseSensitive: false),
+    'retinopati': RegExp(r'retinopati', caseSensitive: false),
+    'makula': RegExp(r'maküla|makula', caseSensitive: false),
+  };
+
+  // Regex patterns for complaints
+  static final _complaintPatterns = {
+    'bulanık_görme': RegExp(r'bulanık\s*görme|bulanıklık', caseSensitive: false),
+    'ağrı': RegExp(r'ağrı|acı', caseSensitive: false),
+    'kızarıklık': RegExp(r'kızarıklık|kırmızı', caseSensitive: false),
+    'kaşıntı': RegExp(r'kaşıntı|kaşın', caseSensitive: false),
+    'sulanma': RegExp(r'sulanma|yaşarma', caseSensitive: false),
+    'yanma': RegExp(r'yanma', caseSensitive: false),
+  };
+
   /// Parse transcript into structured findings
   static Map<String, dynamic> parse(String transcript) {
     if (transcript.isEmpty) return {};
@@ -186,22 +207,22 @@ class TranscriptParser {
     // Common complaints
     final complaints = <String>[];
 
-    if (text.contains(RegExp(r'bulanık\s*görme|bulanıklık', caseSensitive: false))) {
+    if (_complaintPatterns['bulanık_görme']!.hasMatch(text)) {
       complaints.add('Bulanık görme');
     }
-    if (text.contains(RegExp(r'ağrı|acı', caseSensitive: false))) {
+    if (_complaintPatterns['ağrı']!.hasMatch(text)) {
       complaints.add('Göz ağrısı');
     }
-    if (text.contains(RegExp(r'kızarıklık|kırmızı', caseSensitive: false))) {
+    if (_complaintPatterns['kızarıklık']!.hasMatch(text)) {
       complaints.add('Göz kızarıklığı');
     }
-    if (text.contains(RegExp(r'kaşıntı|kaşın', caseSensitive: false))) {
+    if (_complaintPatterns['kaşıntı']!.hasMatch(text)) {
       complaints.add('Kaşıntı');
     }
-    if (text.contains(RegExp(r'sulanma|yaşarma', caseSensitive: false))) {
+    if (_complaintPatterns['sulanma']!.hasMatch(text)) {
       complaints.add('Göz sulanması');
     }
-    if (text.contains(RegExp(r'yanma', caseSensitive: false))) {
+    if (_complaintPatterns['yanma']!.hasMatch(text)) {
       complaints.add('Yanma hissi');
     }
 
@@ -212,30 +233,30 @@ class TranscriptParser {
     // Medical conditions/diagnoses
     final conditions = <String>[];
     
-    if (text.contains(RegExp(r'katarakt', caseSensitive: false))) {
+    if (_medicalConditionPatterns['katarakt']!.hasMatch(text)) {
       conditions.add('Katarakt şüphesi');
     }
-    if (text.contains(RegExp(r'glokom', caseSensitive: false))) {
+    if (_medicalConditionPatterns['glokom']!.hasMatch(text)) {
       conditions.add('Glokom şüphesi');
     }
-    if (text.contains(RegExp(r'miyop|miyopi', caseSensitive: false))) {
+    if (_medicalConditionPatterns['miyopi']!.hasMatch(text)) {
       conditions.add('Miyopi');
     }
-    if (text.contains(RegExp(r'hipermetrop|hipermetropi', caseSensitive: false))) {
+    if (_medicalConditionPatterns['hipermetropi']!.hasMatch(text)) {
       conditions.add('Hipermetropi');
     }
-    if (text.contains(RegExp(r'astigmat', caseSensitive: false))) {
+    if (_medicalConditionPatterns['astigmatizma']!.hasMatch(text)) {
       conditions.add('Astigmatizma');
     }
-    if (text.contains(RegExp(r'retinopati', caseSensitive: false))) {
+    if (_medicalConditionPatterns['retinopati']!.hasMatch(text)) {
       conditions.add('Retinopati');
     }
-    if (text.contains(RegExp(r'maküla|makula', caseSensitive: false))) {
+    if (_medicalConditionPatterns['makula']!.hasMatch(text)) {
       conditions.add('Makula ile ilgili bulgu');
     }
     
     if (conditions.isNotEmpty) {
-      findings['olasilıklar'] = conditions.join(', ');
+      findings['olasiliklar'] = conditions.join(', ');
     }
 
     return findings;
@@ -275,8 +296,8 @@ class TranscriptParser {
       parts.add('Şikayet: ${findings['sikayet']}');
     }
 
-    if (findings.containsKey('olasilıklar')) {
-      parts.add('Olası Durumlar: ${findings['olasilıklar']}');
+    if (findings.containsKey('olasiliklar')) {
+      parts.add('Olası Durumlar: ${findings['olasiliklar']}');
     }
 
     return parts.join('\n');
