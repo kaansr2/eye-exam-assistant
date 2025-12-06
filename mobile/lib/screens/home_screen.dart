@@ -123,6 +123,7 @@ class HomeScreen extends StatelessWidget {
               context,
               examination,
               patient?.adSoyad ?? 'Hasta Adı',
+              patient,
             );
           },
         );
@@ -135,6 +136,7 @@ class HomeScreen extends StatelessWidget {
     BuildContext context,
     Examination examination,
     String patientName,
+    Patient? patient,
   ) {
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR');
     final dateStr = dateFormat.format(examination.muayeneTarihi);
