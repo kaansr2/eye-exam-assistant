@@ -265,8 +265,8 @@ class ExaminationDetailScreen extends StatelessWidget {
       children: [
         if (anterior.kornea != null)
           _buildInfoRow(context, 'Kornea', anterior.kornea!),
-        if (anterior.onKamaraDerinligi != null)
-          _buildInfoRow(context, 'Ön Kamara', anterior.onKamaraDerinligi!),
+        if (anterior.onKamara != null)
+          _buildInfoRow(context, 'Ön Kamara', anterior.onKamara!),
         if (anterior.iris != null) _buildInfoRow(context, 'İris', anterior.iris!),
         if (anterior.lens != null) _buildInfoRow(context, 'Lens', anterior.lens!),
       ],
@@ -281,8 +281,6 @@ class ExaminationDetailScreen extends StatelessWidget {
           _buildInfoRow(context, 'Optik Disk', posterior.optikDisk!),
         if (posterior.makula != null)
           _buildInfoRow(context, 'Makula', posterior.makula!),
-        if (posterior.retina != null)
-          _buildInfoRow(context, 'Retina', posterior.retina!),
         if (posterior.vitreus != null)
           _buildInfoRow(context, 'Vitreus', posterior.vitreus!),
       ],
