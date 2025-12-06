@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../config/app_config.dart';
 import '../utils/constants.dart';
+import '../providers/examination_provider.dart';
+import '../providers/patient_provider.dart';
+import '../models/examination.dart';
 
 /// Ana ekran - Yeni muayene başlatma ve son muayeneler listesi
 class HomeScreen extends StatelessWidget {
@@ -54,7 +59,7 @@ class HomeScreen extends StatelessWidget {
               
               // Son muayeneler listesi
               Expanded(
-                child: _buildRecentExaminationsList(),
+                child: _buildRecentExaminationsList(context),
               ),
             ],
           ),
@@ -94,11 +99,112 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Son muayeneler listesi (placeholder)
-  Widget _buildRecentExaminationsList() {
-    // TODO: Gerçek verilerle değiştir
-    // Şu an için boş liste göster
-    return _buildEmptyState();
+  /// Son muayeneler listesi
+  Widget _buildRecentExaminationsList(BuildContext context) {
+    return Consumer2<ExaminationProvider, PatientProvider>(
+      builder: (context, examinationProvider, patientProvider, _) {
+        final examinations = examinationProvider.examinations;
+        
+        if (examinations.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        // Get recent 10 examinations
+        final recentExams = examinations.take(10).toList();
+
+        return ListView.builder(
+          itemCount: recentExams.length,
+          itemBuilder: (context, index) {
+            final examination = recentExams[index];
+            final patient = patientProvider.getPatientById(examination.patientId);
+            
+            return _buildExaminationCard(
+              context,
+              examination,
+              patient?.adSoyad ?? 'Hasta Adı',
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Build examination card
+  Widget _buildExaminationCard(
+    BuildContext context,
+    Examination examination,
+    String patientName,
+  ) {
+    final dateFormat = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR');
+    final dateStr = dateFormat.format(examination.muayeneTarihi);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        leading: CircleAvatar(
+          backgroundColor: AppConfig.primaryColor,
+          radius: 24,
+          child: Text(
+            patientName.substring(0, 1).toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          patientName,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  dateStr,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+              ],
+            ),
+            if (examination.tani != null && examination.tani!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.medical_services, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      examination.tani!,
+                      style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          // TODO: Navigate to examination detail
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Muayene detayı henüz hazır değil'),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   /// Boş durum widget'ı

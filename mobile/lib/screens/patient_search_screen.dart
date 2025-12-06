@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../utils/constants.dart';
 import '../models/patient.dart';
+import '../providers/patient_provider.dart';
+import '../providers/examination_provider.dart';
 
 /// Hasta arama ve yeni hasta ekleme ekranı
 class PatientSearchScreen extends StatefulWidget {
@@ -13,8 +16,7 @@ class PatientSearchScreen extends StatefulWidget {
 
 class _PatientSearchScreenState extends State<PatientSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final List<Patient> _searchResults = [];
-  bool _isLoading = false;
+  List<Patient> _searchResults = [];
   bool _showNewPatientForm = false;
 
   // Yeni hasta formu kontrolleri
@@ -26,6 +28,15 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
   String _cinsiyet = Constants.male;
 
   @override
+  void initState() {
+    super.initState();
+    // Load patients when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PatientProvider>().loadPatients();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _tcController.dispose();
@@ -35,25 +46,10 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
   }
 
   /// Hasta arama işlemi
-  Future<void> _searchPatient(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults.clear();
-      });
-      return;
-    }
-
+  void _searchPatient(String query) {
+    final patientProvider = context.read<PatientProvider>();
     setState(() {
-      _isLoading = true;
-    });
-
-    // TODO: API'den hasta ara
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    setState(() {
-      _isLoading = false;
-      // Simüle edilmiş sonuçlar - gerçek API entegrasyonunda değişecek
-      _searchResults.clear();
+      _searchResults = patientProvider.searchPatients(query);
     });
   }
 
@@ -68,11 +64,6 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    // TODO: API'ye yeni hasta kaydet
     final newPatient = Patient(
       tcKimlikNo: _tcController.text,
       adSoyad: _adSoyadController.text,
@@ -81,15 +72,25 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
       telefon: _telefonController.text.isNotEmpty ? _telefonController.text : null,
     );
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    final patientProvider = context.read<PatientProvider>();
+    final success = await patientProvider.addPatient(newPatient);
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (!mounted) return;
 
-    if (mounted) {
-      // Ses kayıt ekranına git
-      Navigator.pushNamed(context, '/recording', arguments: newPatient);
+    if (success) {
+      // Start new examination with this patient
+      final examinationProvider = context.read<ExaminationProvider>();
+      examinationProvider.startNewExamination(patientProvider.currentPatient!);
+
+      // Navigate to recording screen
+      Navigator.pushNamed(context, '/recording');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(patientProvider.errorMessage ?? 'Hasta kaydedilemedi'),
+          backgroundColor: AppConfig.errorColor,
+        ),
+      );
     }
   }
 
@@ -180,9 +181,13 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
 
   /// Arama sonuçları
   Widget _buildSearchResults() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return Consumer<PatientProvider>(
+      builder: (context, patientProvider, _) {
+        final isLoading = patientProvider.isLoading;
+
+        if (isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
     if (_searchResults.isEmpty && _searchController.text.isNotEmpty) {
       return Center(
@@ -262,7 +267,11 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
             subtitle: Text('TC: ${patient.tcKimlikNo} • ${patient.yas} yaş'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              Navigator.pushNamed(context, '/recording', arguments: patient);
+              // Set current patient and start examination
+              final examinationProvider = context.read<ExaminationProvider>();
+              examinationProvider.startNewExamination(patient);
+              
+              Navigator.pushNamed(context, '/recording');
             },
           ),
         );
@@ -272,7 +281,11 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
 
   /// Yeni hasta formu
   Widget _buildNewPatientForm() {
-    return SingleChildScrollView(
+    return Consumer<PatientProvider>(
+      builder: (context, patientProvider, _) {
+        final isLoading = patientProvider.isLoading;
+
+        return SingleChildScrollView(
       child: Form(
         key: _formKey,
         child: Column(
@@ -402,12 +415,12 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
             SizedBox(
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _saveNewPatient,
+                onPressed: isLoading ? null : _saveNewPatient,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppConfig.primaryColor,
                   foregroundColor: Colors.white,
                 ),
-                icon: _isLoading
+                icon: isLoading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -417,7 +430,7 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
                         ),
                       )
                     : const Icon(Icons.save),
-                label: Text(_isLoading ? 'Kaydediliyor...' : 'Kaydet ve Devam Et'),
+                label: Text(isLoading ? 'Kaydediliyor...' : 'Kaydet ve Devam Et'),
               ),
             ),
           ],
