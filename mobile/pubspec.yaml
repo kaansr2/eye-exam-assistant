@@ -21,6 +21,8 @@ dependencies:
   intl: ^0.18.1                       # Tarih formatları
   shared_preferences: ^2.2.2          # Yerel depolama
   avatar_glow: ^3.0.1                 # Pulse animasyonu
+  google_generative_ai: ^0.4.0        # Gemini API için
+  uuid: ^4.2.1                        # Unique ID için
 
 dev_dependencies:
   flutter_test:

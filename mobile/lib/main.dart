@@ -9,8 +9,11 @@ import 'screens/review_screen.dart';
 import 'screens/history_screen.dart';
 import 'config/app_config.dart';
 import 'providers/speech_provider.dart';
+import 'providers/patient_provider.dart';
+import 'providers/examination_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const EyeExamAssistantApp());
 }
 
@@ -23,6 +26,12 @@ class EyeExamAssistantApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SpeechProvider()),
+        ChangeNotifierProvider(
+          create: (_) => PatientProvider()..initialize(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ExaminationProvider()..initialize(),
+        ),
       ],
       child: MaterialApp(
         title: AppConfig.appName,
