@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:typed_data';
+import 'dart:io';
 import '../config/app_config.dart';
 import '../utils/constants.dart';
+import '../providers/examination_provider.dart';
+import '../services/gemini_service.dart';
+import '../widgets/voice_text_field.dart';
+import '../widgets/ai_analysis_card.dart';
 
 /// Onay ekranı - Tüm bilgileri gözden geçirme ve onaylama
 class ReviewScreen extends StatefulWidget {
@@ -11,7 +18,6 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  bool _isLoading = false;
   bool _isEditing = false;
   
   // Düzenlenebilir alanlar
@@ -19,6 +25,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final _taniController = TextEditingController();
   final _tedaviController = TextEditingController();
   final _notlarController = TextEditingController();
+
+  final GeminiService _geminiService = GeminiService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with provider data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final examinationProvider = context.read<ExaminationProvider>();
+      _sikayetController.text = examinationProvider.basvuruSikayeti;
+      _taniController.text = examinationProvider.tani;
+      _tedaviController.text = examinationProvider.tedavi;
+      _notlarController.text = examinationProvider.notlar;
+    });
+  }
 
   @override
   void dispose() {
@@ -31,18 +52,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Muayeneyi kaydet
   Future<void> _saveExamination() async {
-    setState(() {
-      _isLoading = true;
-    });
+    final examinationProvider = context.read<ExaminationProvider>();
 
-    // TODO: API'ye muayene kaydet
-    await Future.delayed(const Duration(seconds: 1));
+    // Update fields from controllers
+    examinationProvider.setBasvuruSikayeti(_sikayetController.text);
+    examinationProvider.setTani(_taniController.text);
+    examinationProvider.setTedavi(_tedaviController.text);
+    examinationProvider.setNotlar(_notlarController.text);
 
-    setState(() {
-      _isLoading = false;
-    });
+    final success = await examinationProvider.saveExamination();
 
-    if (mounted) {
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(Constants.saveSuccess),
@@ -52,6 +74,83 @@ class _ReviewScreenState extends State<ReviewScreen> {
       
       // Ana ekrana dön
       Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(examinationProvider.errorMessage ?? 'Kaydedilemedi'),
+          backgroundColor: AppConfig.errorColor,
+        ),
+      );
+    }
+  }
+
+  /// AI analizi yap
+  Future<void> _performAiAnalysis() async {
+    final examinationProvider = context.read<ExaminationProvider>();
+
+    if (!GeminiService.isConfigured()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gemini API key yapılandırılmamış'),
+          backgroundColor: AppConfig.errorColor,
+        ),
+      );
+      return;
+    }
+
+    examinationProvider.setAnalyzing(true);
+
+    try {
+      final transcript = examinationProvider.transcript;
+      final images = examinationProvider.eyeImages;
+
+      // If we have images, do combined analysis
+      if (images.isNotEmpty && transcript.isNotEmpty) {
+        // Load image bytes
+        final imageBytesList = <Uint8List>[];
+        for (final img in images) {
+          try {
+            final file = File(img['path']);
+            if (await file.exists()) {
+              imageBytesList.add(await file.readAsBytes());
+            }
+          } catch (e) {
+            // Skip if image can't be loaded
+          }
+        }
+
+        final analysis = await _geminiService.analyzeCombined(
+          transcript,
+          imageBytesList,
+        );
+        examinationProvider.setAiAnalysis(analysis);
+      } else if (transcript.isNotEmpty) {
+        // Text only analysis
+        final analysis = await _geminiService.analyzeExamination(transcript);
+        examinationProvider.setAiAnalysis(analysis);
+      } else {
+        throw Exception('Analiz için veri bulunamadı');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('AI analizi tamamlandı'),
+            backgroundColor: AppConfig.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI analiz hatası: $e'),
+            backgroundColor: AppConfig.errorColor,
+          ),
+        );
+      }
+    } finally {
+      examinationProvider.setAnalyzing(false);
     }
   }
 
@@ -195,14 +294,32 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Hasta bilgisi
   Widget _buildPatientInfo() {
-    return Column(
-      children: [
-        _buildInfoRow('Ad Soyad', 'Hasta Adı'),
-        _buildInfoRow('TC Kimlik No', '***********'),
-        _buildInfoRow('Yaş', '- yaş'),
-        _buildInfoRow('Cinsiyet', '-'),
-        _buildInfoRow('Muayene Tarihi', DateTime.now().toString().split(' ')[0]),
-      ],
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        final patient = examinationProvider.currentPatient;
+        
+        if (patient == null) {
+          return Column(
+            children: [
+              _buildInfoRow('Ad Soyad', 'Hasta Adı'),
+              _buildInfoRow('TC Kimlik No', '***********'),
+              _buildInfoRow('Yaş', '- yaş'),
+              _buildInfoRow('Cinsiyet', '-'),
+              _buildInfoRow('Muayene Tarihi', DateTime.now().toString().split(' ')[0]),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            _buildInfoRow('Ad Soyad', patient.adSoyad),
+            _buildInfoRow('TC Kimlik No', patient.tcKimlikNo),
+            _buildInfoRow('Yaş', '${patient.yas} yaş'),
+            _buildInfoRow('Cinsiyet', patient.cinsiyet),
+            _buildInfoRow('Muayene Tarihi', DateTime.now().toString().split(' ')[0]),
+          ],
+        );
+      },
     );
   }
 
@@ -237,13 +354,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
   /// Şikayet bölümü
   Widget _buildComplaintSection() {
     if (_isEditing) {
-      return TextField(
+      return VoiceTextField(
         controller: _sikayetController,
+        label: 'Başvuru Şikayeti',
+        hint: 'Hastanın şikayetini yazın...',
         maxLines: 3,
-        decoration: const InputDecoration(
-          hintText: 'Hastanın şikayetini yazın...',
-          border: OutlineInputBorder(),
-        ),
+        onChanged: (value) {
+          // Update provider when text changes
+          context.read<ExaminationProvider>().setBasvuruSikayeti(value);
+        },
       );
     }
     
@@ -259,15 +378,39 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Muayene bulguları
   Widget _buildExaminationFindings() {
-    return Column(
-      children: [
-        _buildFindingRow('Görme Keskinliği (OD)', '-'),
-        _buildFindingRow('Görme Keskinliği (OS)', '-'),
-        _buildFindingRow('Göz İçi Basıncı (OD)', '- mmHg'),
-        _buildFindingRow('Göz İçi Basıncı (OS)', '- mmHg'),
-        _buildFindingRow('Ön Segment', 'Normal'),
-        _buildFindingRow('Fundus', 'Normal'),
-      ],
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        final findings = examinationProvider.parsedFindings;
+        
+        return Column(
+          children: [
+            _buildFindingRow(
+              'Görme Keskinliği (OD)',
+              findings['gorme_keskinligi_od']?.toString() ?? '-',
+            ),
+            _buildFindingRow(
+              'Görme Keskinliği (OS)',
+              findings['gorme_keskinligi_os']?.toString() ?? '-',
+            ),
+            _buildFindingRow(
+              'Göz İçi Basıncı (OD)',
+              findings['iop_od']?.toString() ?? '- mmHg',
+            ),
+            _buildFindingRow(
+              'Göz İçi Basıncı (OS)',
+              findings['iop_os']?.toString() ?? '- mmHg',
+            ),
+            _buildFindingRow(
+              'Ön Segment',
+              findings['on_segment']?.toString() ?? 'Normal',
+            ),
+            _buildFindingRow(
+              'Fundus',
+              findings['fundus']?.toString() ?? 'Normal',
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -293,66 +436,80 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Fotoğraflar bölümü
   Widget _buildImagesSection() {
-    // TODO: Gerçek fotoğraflarla değiştir
-    return SizedBox(
-      height: 100,
-      child: Center(
-        child: Text(
-          'Çekilen göz fotoğrafları burada görünecek',
-          style: TextStyle(color: Colors.grey[600]),
-        ),
-      ),
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        final images = examinationProvider.eyeImages;
+        
+        if (images.isEmpty) {
+          return SizedBox(
+            height: 100,
+            child: Center(
+              child: Text(
+                'Göz fotoğrafı eklenmedi',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: images.length,
+            itemBuilder: (context, index) {
+              final image = images[index];
+              final eyeLabel = image['eye'] == 'right' ? 'OD' : 'OS';
+              
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                        image: image['path'] != null 
+                            ? DecorationImage(
+                                image: FileImage(File(image['path'])),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: image['path'] == null
+                          ? Icon(Icons.image, color: Colors.grey[600], size: 32)
+                          : null,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      eyeLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
   /// AI analizi
   Widget _buildAiAnalysis() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.smart_toy, color: Colors.blue[700], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'AI Önerileri',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Görüntü analizi sonuçları ve önerilen tanılar burada görünecek.',
-            style: TextStyle(color: Colors.grey[700]),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                'Güven Skoru: ',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              Text(
-                '-%',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        return AiAnalysisCard(
+          analysis: examinationProvider.aiAnalysis,
+          isLoading: examinationProvider.isAnalyzing,
+          onAnalyze: _performAiAnalysis,
+        );
+      },
     );
   }
 
@@ -361,21 +518,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
     if (_isEditing) {
       return Column(
         children: [
-          TextField(
+          VoiceTextField(
             controller: _taniController,
-            decoration: const InputDecoration(
-              labelText: 'Tanı',
-              border: OutlineInputBorder(),
-            ),
+            label: 'Tanı',
+            maxLines: 2,
+            onChanged: (value) {
+              context.read<ExaminationProvider>().setTani(value);
+            },
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: _tedaviController,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Tedavi',
-              border: OutlineInputBorder(),
-            ),
+            label: 'Tedavi',
+            maxLines: 3,
+            onChanged: (value) {
+              context.read<ExaminationProvider>().setTedavi(value);
+            },
           ),
         ],
       );
@@ -392,13 +550,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
   /// Notlar bölümü
   Widget _buildNotesSection() {
     if (_isEditing) {
-      return TextField(
+      return VoiceTextField(
         controller: _notlarController,
+        label: 'Ek Notlar',
+        hint: 'Ek notlar...',
         maxLines: 3,
-        decoration: const InputDecoration(
-          hintText: 'Ek notlar...',
-          border: OutlineInputBorder(),
-        ),
+        onChanged: (value) {
+          context.read<ExaminationProvider>().setNotlar(value);
+        },
       );
     }
     
@@ -412,27 +571,33 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Kaydet butonu
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton.icon(
-        onPressed: _isLoading ? null : _saveExamination,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppConfig.successColor,
-          foregroundColor: Colors.white,
-        ),
-        icon: _isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.check_circle),
-        label: Text(_isLoading ? 'Kaydediliyor...' : 'Onayla ve Kaydet'),
-      ),
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        final isLoading = examinationProvider.isLoading;
+
+        return SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton.icon(
+            onPressed: isLoading ? null : _saveExamination,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConfig.successColor,
+              foregroundColor: Colors.white,
+            ),
+            icon: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.check_circle),
+            label: Text(isLoading ? 'Kaydediliyor...' : 'Onayla ve Kaydet'),
+          ),
+        );
+      },
     );
   }
 }
