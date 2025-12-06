@@ -8,29 +8,58 @@ class TranscriptParser {
     RegExp(r'sağ\s*göz(?:\s*görme\s*keskinliği)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
     RegExp(r'(?:od|o\.?d\.?)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
     RegExp(r'görme\s*keskinliği\s*sağ[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'sağda[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'(?:vizyon|va)\s*(?:sağ|od)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'sağ[:\s]*(?:göz)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
   ];
 
   static final _leftVisionPatterns = [
     RegExp(r'sol\s*göz(?:\s*görme\s*keskinliği)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
     RegExp(r'(?:os|o\.?s\.?)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
     RegExp(r'görme\s*keskinliği\s*sol[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'solda[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'(?:vizyon|va)\s*(?:sol|os)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'sol[:\s]*(?:göz)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
   ];
 
   // Regex patterns for IOP
   static final _iopCombinedPatterns = [
-    RegExp(r'(?:göz\s*içi\s*basıncı|basınç|iop).*?sağ(?:da)?[:\s]*(\d+).*?sol(?:da)?[:\s]*(\d+)', caseSensitive: false),
-    RegExp(r'(?:basınç|iop)[:\s]*(\d+)\s*[/\\]\s*(\d+)', caseSensitive: false),
+    RegExp(r'(?:göz\s*içi\s*basıncı|basınç|iop|tansiyon).*?sağ(?:da)?[:\s]*(\d+).*?sol(?:da)?[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'(?:basınç|iop|tansiyon)[:\s]*(\d+)\s*[/\\]\s*(\d+)', caseSensitive: false),
   ];
 
   static final _rightIopPatterns = [
-    RegExp(r'(?:sağ|od).*?basınç[:\s]*(\d+)', caseSensitive: false),
-    RegExp(r'basınç.*?(?:sağ|od)[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'(?:sağ|od).*?(?:basınç|iop|tansiyon)[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'(?:basınç|iop|tansiyon).*?(?:sağ|od)[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'sağda.*?(\d+)(?:\s*mmhg)?', caseSensitive: false),
   ];
 
   static final _leftIopPatterns = [
-    RegExp(r'(?:sol|os).*?basınç[:\s]*(\d+)', caseSensitive: false),
-    RegExp(r'basınç.*?(?:sol|os)[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'(?:sol|os).*?(?:basınç|iop|tansiyon)[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'(?:basınç|iop|tansiyon).*?(?:sol|os)[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'solda.*?(\d+)(?:\s*mmhg)?', caseSensitive: false),
   ];
+
+  // Regex patterns for medical conditions
+  static final _medicalConditionPatterns = {
+    'katarakt': RegExp(r'katarakt', caseSensitive: false),
+    'glokom': RegExp(r'glokom', caseSensitive: false),
+    'miyopi': RegExp(r'miyop|miyopi', caseSensitive: false),
+    'hipermetropi': RegExp(r'hipermetrop|hipermetropi', caseSensitive: false),
+    'astigmatizma': RegExp(r'astigmat', caseSensitive: false),
+    'retinopati': RegExp(r'retinopati', caseSensitive: false),
+    'makula': RegExp(r'maküla|makula', caseSensitive: false),
+  };
+
+  // Regex patterns for complaints
+  static final _complaintPatterns = {
+    'bulanık_görme': RegExp(r'bulanık\s*görme|bulanıklık', caseSensitive: false),
+    'ağrı': RegExp(r'ağrı|acı', caseSensitive: false),
+    'kızarıklık': RegExp(r'kızarıklık|kırmızı', caseSensitive: false),
+    'kaşıntı': RegExp(r'kaşıntı|kaşın', caseSensitive: false),
+    'sulanma': RegExp(r'sulanma|yaşarma', caseSensitive: false),
+    'yanma': RegExp(r'yanma', caseSensitive: false),
+  };
 
   /// Parse transcript into structured findings
   static Map<String, dynamic> parse(String transcript) {
@@ -178,27 +207,56 @@ class TranscriptParser {
     // Common complaints
     final complaints = <String>[];
 
-    if (text.contains(RegExp(r'bulanık\s*görme|bulanıklık', caseSensitive: false))) {
+    if (_complaintPatterns['bulanık_görme']!.hasMatch(text)) {
       complaints.add('Bulanık görme');
     }
-    if (text.contains(RegExp(r'ağrı|acı', caseSensitive: false))) {
+    if (_complaintPatterns['ağrı']!.hasMatch(text)) {
       complaints.add('Göz ağrısı');
     }
-    if (text.contains(RegExp(r'kızarıklık|kırmızı', caseSensitive: false))) {
+    if (_complaintPatterns['kızarıklık']!.hasMatch(text)) {
       complaints.add('Göz kızarıklığı');
     }
-    if (text.contains(RegExp(r'kaşıntı|kaşın', caseSensitive: false))) {
+    if (_complaintPatterns['kaşıntı']!.hasMatch(text)) {
       complaints.add('Kaşıntı');
     }
-    if (text.contains(RegExp(r'sulanma|yaşarma', caseSensitive: false))) {
+    if (_complaintPatterns['sulanma']!.hasMatch(text)) {
       complaints.add('Göz sulanması');
     }
-    if (text.contains(RegExp(r'yanma', caseSensitive: false))) {
+    if (_complaintPatterns['yanma']!.hasMatch(text)) {
       complaints.add('Yanma hissi');
     }
 
     if (complaints.isNotEmpty) {
       findings['sikayet'] = complaints.join(', ');
+    }
+
+    // Medical conditions/diagnoses
+    final conditions = <String>[];
+    
+    if (_medicalConditionPatterns['katarakt']!.hasMatch(text)) {
+      conditions.add('Katarakt şüphesi');
+    }
+    if (_medicalConditionPatterns['glokom']!.hasMatch(text)) {
+      conditions.add('Glokom şüphesi');
+    }
+    if (_medicalConditionPatterns['miyopi']!.hasMatch(text)) {
+      conditions.add('Miyopi');
+    }
+    if (_medicalConditionPatterns['hipermetropi']!.hasMatch(text)) {
+      conditions.add('Hipermetropi');
+    }
+    if (_medicalConditionPatterns['astigmatizma']!.hasMatch(text)) {
+      conditions.add('Astigmatizma');
+    }
+    if (_medicalConditionPatterns['retinopati']!.hasMatch(text)) {
+      conditions.add('Retinopati');
+    }
+    if (_medicalConditionPatterns['makula']!.hasMatch(text)) {
+      conditions.add('Makula ile ilgili bulgu');
+    }
+    
+    if (conditions.isNotEmpty) {
+      findings['olasiliklar'] = conditions.join(', ');
     }
 
     return findings;
@@ -236,6 +294,10 @@ class TranscriptParser {
 
     if (findings.containsKey('sikayet')) {
       parts.add('Şikayet: ${findings['sikayet']}');
+    }
+
+    if (findings.containsKey('olasiliklar')) {
+      parts.add('Olası Durumlar: ${findings['olasiliklar']}');
     }
 
     return parts.join('\n');

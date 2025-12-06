@@ -6,6 +6,7 @@ import '../utils/constants.dart';
 import '../providers/examination_provider.dart';
 import '../providers/patient_provider.dart';
 import '../models/examination.dart';
+import 'examination_detail_screen.dart';
 
 /// Ana ekran - Yeni muayene başlatma ve son muayeneler listesi
 class HomeScreen extends StatelessWidget {
@@ -196,10 +197,14 @@ class HomeScreen extends StatelessWidget {
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () {
-          // TODO: Navigate to examination detail
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Muayene detayı henüz hazır değil'),
+          // Navigate to examination detail
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ExaminationDetailScreen(
+                examination: examination,
+                patient: patient,
+              ),
             ),
           );
         },

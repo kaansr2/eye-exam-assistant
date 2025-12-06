@@ -174,12 +174,12 @@ class _CameraScreenState extends State<CameraScreen> {
           appBar: AppBar(
             title: const Text('Göz Fotoğrafı'),
             actions: [
-              if (capturedImages.isNotEmpty)
-                TextButton.icon(
-                  onPressed: _proceedToReview,
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('İleri'),
-                ),
+              // Always show skip button
+              TextButton.icon(
+                onPressed: _proceedToReview,
+                icon: const Icon(Icons.arrow_forward),
+                label: Text(capturedImages.isNotEmpty ? 'İleri' : 'Atla'),
+              ),
             ],
           ),
           body: SafeArea(
@@ -386,68 +386,65 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
-  /// Çekim butonları (kamera + galeri)
+  /// Çekim butonları (kamera + galeri + atla)
   Widget _buildCaptureButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Column(
       children: [
-        // Galeri butonu
-        Column(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            FloatingActionButton(
-              heroTag: 'gallery',
-              onPressed: _isCapturing ? null : _pickFromGallery,
-              backgroundColor: Colors.white,
-              foregroundColor: AppConfig.primaryColor,
-              child: const Icon(Icons.photo_library, size: 32),
+            // Galeri butonu
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ElevatedButton.icon(
+                  onPressed: _isCapturing ? null : _pickFromGallery,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppConfig.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: AppConfig.primaryColor),
+                  ),
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('📁 Cihazdan Aktar'),
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Galeriden Seç',
-              style: TextStyle(fontSize: 12),
+            
+            // Kamera butonu
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ElevatedButton.icon(
+                  onPressed: _isCapturing ? null : _captureImage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConfig.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: _isCapturing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.camera_alt),
+                  label: const Text('📷 Kamera ile Çek'),
+                ),
+              ),
             ),
           ],
         ),
         
-        // Kamera butonu
-        Column(
-          children: [
-            GestureDetector(
-              onTap: _captureImage,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppConfig.primaryColor, width: 4),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _isCapturing ? Colors.grey : AppConfig.primaryColor,
-                  ),
-                  child: _isCapturing
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.camera,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Fotoğraf Çek',
-              style: TextStyle(fontSize: 12),
-            ),
-          ],
+        const SizedBox(height: 12),
+        
+        // Atla butonu
+        TextButton(
+          onPressed: _proceedToReview,
+          child: const Text('Fotoğrafsız Devam Et'),
         ),
       ],
     );
