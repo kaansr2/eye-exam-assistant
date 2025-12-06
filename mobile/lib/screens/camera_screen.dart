@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../config/app_config.dart';
 import '../utils/constants.dart';
+import '../providers/examination_provider.dart';
 
 /// Kamera ekranı - Göz fotoğrafı çekme
 class CameraScreen extends StatefulWidget {
@@ -14,7 +17,7 @@ class _CameraScreenState extends State<CameraScreen> {
   String _selectedEye = 'right'; // 'right', 'left', 'both'
   bool _isCameraReady = false;
   bool _isCapturing = false;
-  final List<Map<String, dynamic>> _capturedImages = [];
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -47,42 +50,104 @@ class _CameraScreenState extends State<CameraScreen> {
       _isCapturing = true;
     });
 
-    // TODO: Gerçek fotoğraf çekme işlemi
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      // Take photo with camera
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
+      if (photo != null) {
+        final examinationProvider = context.read<ExaminationProvider>();
+        examinationProvider.addEyeImage({
+          'eye': _selectedEye,
+          'path': photo.path,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_getEyeLabel(_selectedEye)} fotoğrafı çekildi'),
+              backgroundColor: AppConfig.successColor,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fotoğraf çekilemedi: $e'),
+            backgroundColor: AppConfig.errorColor,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isCapturing = false;
+      });
+    }
+  }
+
+  /// Galeriden fotoğraf seç
+  Future<void> _pickFromGallery() async {
+    if (_isCapturing) return;
 
     setState(() {
-      _capturedImages.add({
-        'eye': _selectedEye,
-        'timestamp': DateTime.now(),
-        // 'path': imagePath,
-      });
-      _isCapturing = false;
+      _isCapturing = true;
     });
 
-    // Başarılı mesajı göster
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_getEyeLabel(_selectedEye)} fotoğrafı çekildi'),
-          backgroundColor: AppConfig.successColor,
-          duration: const Duration(seconds: 2),
-        ),
+    try {
+      // Pick image from gallery
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
       );
+
+      if (photo != null) {
+        final examinationProvider = context.read<ExaminationProvider>();
+        examinationProvider.addEyeImage({
+          'eye': _selectedEye,
+          'path': photo.path,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_getEyeLabel(_selectedEye)} fotoğrafı eklendi'),
+              backgroundColor: AppConfig.successColor,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fotoğraf seçilemedi: $e'),
+            backgroundColor: AppConfig.errorColor,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isCapturing = false;
+      });
     }
   }
 
   /// Çekilen fotoğrafı sil
   void _deleteImage(int index) {
-    setState(() {
-      _capturedImages.removeAt(index);
-    });
+    context.read<ExaminationProvider>().removeEyeImage(index);
   }
 
   /// Onay ekranına git
   void _proceedToReview() {
-    Navigator.pushNamed(context, '/review', arguments: {
-      'images': _capturedImages,
-    });
+    Navigator.pushNamed(context, '/review');
   }
 
   /// Göz etiketi al
@@ -101,19 +166,23 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Göz Fotoğrafı'),
-        actions: [
-          if (_capturedImages.isNotEmpty)
-            TextButton.icon(
-              onPressed: _proceedToReview,
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('İleri'),
-            ),
-        ],
-      ),
-      body: SafeArea(
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        final capturedImages = examinationProvider.eyeImages;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Göz Fotoğrafı'),
+            actions: [
+              if (capturedImages.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _proceedToReview,
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text('İleri'),
+                ),
+            ],
+          ),
+          body: SafeArea(
         child: Column(
           children: [
             // Kamera önizleme alanı
@@ -256,12 +325,12 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   /// Çekilen fotoğraflar listesi
-  Widget _buildCapturedImagesList() {
+  Widget _buildCapturedImagesList(List<Map<String, dynamic>> images) {
     return ListView.builder(
       scrollDirection: Axis.horizontal,
-      itemCount: _capturedImages.length,
+      itemCount: images.length,
       itemBuilder: (context, index) {
-        final image = _capturedImages[index];
+        final image = images[index];
         return Padding(
           padding: const EdgeInsets.only(right: 8),
           child: Stack(
@@ -315,37 +384,70 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
-  /// Çekim butonu
-  Widget _buildCaptureButton() {
-    return GestureDetector(
-      onTap: _captureImage,
-      child: Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: AppConfig.primaryColor, width: 4),
+  /// Çekim butonları (kamera + galeri)
+  Widget _buildCaptureButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // Galeri butonu
+        Column(
+          children: [
+            FloatingActionButton(
+              heroTag: 'gallery',
+              onPressed: _isCapturing ? null : _pickFromGallery,
+              backgroundColor: Colors.white,
+              foregroundColor: AppConfig.primaryColor,
+              child: const Icon(Icons.photo_library, size: 32),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Galeriden Seç',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
         ),
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _isCapturing ? Colors.grey : AppConfig.primaryColor,
-          ),
-          child: _isCapturing
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : const Icon(
-                  Icons.camera,
-                  color: Colors.white,
-                  size: 40,
+        
+        // Kamera butonu
+        Column(
+          children: [
+            GestureDetector(
+              onTap: _captureImage,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppConfig.primaryColor, width: 4),
                 ),
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isCapturing ? Colors.grey : AppConfig.primaryColor,
+                  ),
+                  child: _isCapturing
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.camera,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Fotoğraf Çek',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }

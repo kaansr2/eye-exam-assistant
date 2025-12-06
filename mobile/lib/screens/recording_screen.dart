@@ -4,6 +4,8 @@ import '../config/app_config.dart';
 import '../utils/constants.dart';
 import '../utils/permission_handler.dart';
 import '../providers/speech_provider.dart';
+import '../providers/examination_provider.dart';
+import '../services/transcript_parser.dart';
 import '../widgets/voice_input_button.dart';
 
 /// Ses kayıt ekranı - Doktor konuşmasını kaydetme ve transkripsiyon
@@ -90,16 +92,22 @@ class _RecordingScreenState extends State<RecordingScreen> {
   /// İleri git (Kamera ekranına)
   void _proceedToCamera() {
     final speechProvider = context.read<SpeechProvider>();
+    final examinationProvider = context.read<ExaminationProvider>();
     
     // Kayıt devam ediyorsa durdur
     if (speechProvider.isListening) {
       speechProvider.stopListening();
     }
 
-    Navigator.pushNamed(context, '/camera', arguments: {
-      'transcription': speechProvider.fullTranscription,
-      'medicalValues': speechProvider.extractMedicalValues(),
-    });
+    // Save transcript to examination provider
+    final transcript = speechProvider.fullTranscription;
+    examinationProvider.setTranscript(transcript);
+
+    // Parse transcript into findings
+    final parsedFindings = TranscriptParser.parse(transcript);
+    examinationProvider.setParsedFindings(parsedFindings);
+
+    Navigator.pushNamed(context, '/camera');
   }
 
   /// Scroll'u en alta kaydır
@@ -176,36 +184,81 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   /// Hasta bilgisi kartı
   Widget _buildPatientInfoCard() {
-    // TODO: Argümanlardan hasta bilgisini al
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConfig.defaultPadding),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: AppConfig.primaryColor,
-              radius: 24,
-              child: const Icon(Icons.person, color: Colors.white),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Consumer<ExaminationProvider>(
+      builder: (context, examinationProvider, _) {
+        final patient = examinationProvider.currentPatient;
+        
+        if (patient == null) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppConfig.defaultPadding),
+              child: Row(
                 children: [
-                  Text(
-                    'Hasta Adı',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  CircleAvatar(
+                    backgroundColor: AppConfig.primaryColor,
+                    radius: 24,
+                    child: const Icon(Icons.person, color: Colors.white),
                   ),
-                  Text(
-                    'TC: *********** • - yaş',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hasta Adı',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          'TC: *********** • - yaş',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          );
+        }
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppConfig.defaultPadding),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppConfig.primaryColor,
+                  radius: 24,
+                  child: Text(
+                    patient.adSoyad.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        patient.adSoyad,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        'TC: ${patient.tcKimlikNo} • ${patient.yas} yaş • ${patient.cinsiyet}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
