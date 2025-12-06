@@ -1,14 +1,26 @@
 import 'dart:typed_data';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Service for Gemini AI integration
 /// Provides text and image analysis capabilities
 class GeminiService {
-  // API key from environment variable
-  static const String apiKey = String.fromEnvironment(
-    'GEMINI_API_KEY',
-    defaultValue: '',
-  );
+  // API key from .env file or environment variable
+  static String get apiKey {
+    // Try to get from .env file first
+    final envKey = dotenv.env['GEMINI_API_KEY'];
+    if (envKey != null && envKey.isNotEmpty) {
+      return envKey;
+    }
+    
+    // Fallback to compile-time environment variable
+    const compiledKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+    if (compiledKey.isNotEmpty) {
+      return compiledKey;
+    }
+    
+    return '';
+  }
 
   GenerativeModel? _textModel;
   GenerativeModel? _visionModel;
@@ -16,7 +28,8 @@ class GeminiService {
   /// Initialize models
   void initialize() {
     if (apiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY not configured');
+      // Don't throw - allow app to work in demo mode
+      return;
     }
 
     _textModel = GenerativeModel(
@@ -32,6 +45,11 @@ class GeminiService {
 
   /// Analyze examination transcript and provide medical insights
   Future<Map<String, dynamic>> analyzeExamination(String transcript) async {
+    if (!isConfigured()) {
+      // Return demo response if API key not configured
+      return _getDemoExaminationAnalysis(transcript);
+    }
+
     if (_textModel == null) initialize();
 
     try {
@@ -93,6 +111,11 @@ Yanıtı JSON formatında ver:
 
   /// Analyze eye image for abnormalities
   Future<Map<String, dynamic>> analyzeEyeImage(Uint8List imageBytes) async {
+    if (!isConfigured()) {
+      // Return demo response if API key not configured
+      return _getDemoImageAnalysis();
+    }
+
     if (_visionModel == null) initialize();
 
     try {
@@ -184,5 +207,42 @@ Yanıtı JSON formatında ver:
   /// Check if API key is configured
   static bool isConfigured() {
     return apiKey.isNotEmpty;
+  }
+
+  /// Demo mode - return sample analysis when API key is not configured
+  Map<String, dynamic> _getDemoExaminationAnalysis(String transcript) {
+    return {
+      'metin_analiz': '''
+📋 DEMO ANALIZ (Gemini API key yapılandırılmamış)
+
+Transkript özeti alındı. Gerçek AI analizi için lütfen .env dosyasına GEMINI_API_KEY ekleyin.
+
+Örnek analiz:
+• Bulgular kaydedildi
+• Normal muayene paterni
+• Takip önerisi: Rutin kontrol
+
+NOT: Bu bir demo yanıttır. Gerçek AI analizi için API key gereklidir.
+''',
+      'timestamp': DateTime.now().toIso8601String(),
+      'model': 'demo-mode',
+      'is_demo': true,
+    };
+  }
+
+  /// Demo mode - return sample image analysis
+  Map<String, dynamic> _getDemoImageAnalysis() {
+    return {
+      'gorsel_analiz': '''
+📋 DEMO GÖRÜNTÜ ANALİZİ (Gemini API key yapılandırılmamış)
+
+Görüntü kaydedildi. Gerçek AI görüntü analizi için lütfen .env dosyasına GEMINI_API_KEY ekleyin.
+
+NOT: Bu bir demo yanıttır. Gerçek AI analizi için API key gereklidir.
+''',
+      'timestamp': DateTime.now().toIso8601String(),
+      'model': 'demo-mode',
+      'is_demo': true,
+    };
   }
 }

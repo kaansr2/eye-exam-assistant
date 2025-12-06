@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/home_screen.dart';
 import 'screens/patient_search_screen.dart';
 import 'screens/recording_screen.dart';
@@ -14,6 +15,16 @@ import 'providers/examination_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load .env file if it exists, otherwise continue without it
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    // .env file doesn't exist or couldn't be loaded - this is OK
+    // App will work in demo mode
+    debugPrint('Note: .env file not loaded ($e) - API features will use demo mode');
+  }
+  
   runApp(const EyeExamAssistantApp());
 }
 
