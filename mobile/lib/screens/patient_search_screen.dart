@@ -277,6 +277,8 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
         );
       },
     );
+      },
+    );
   }
 
   /// Yeni hasta formu
@@ -436,6 +438,8 @@ class _PatientSearchScreenState extends State<PatientSearchScreen> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }
