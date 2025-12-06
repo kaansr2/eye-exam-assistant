@@ -18,6 +18,7 @@ dependencies:
   permission_handler: ^11.3.0         # İzin yönetimi
   intl: ^0.18.1                       # Tarih formatları
   shared_preferences: ^2.2.2          # Yerel depolama
+  avatar_glow: ^3.0.1                 # Pulse animasyonu
 
 dev_dependencies:
   flutter_test:

@@ -1,23 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../config/app_config.dart';
 
-/// Ses kayıt butonu widget'ı
+/// Ses kayıt butonu widget'ı - Animasyonlu ve haptic feedback destekli
 class VoiceInputButton extends StatefulWidget {
   final VoidCallback? onStartRecording;
   final VoidCallback? onStopRecording;
+  final VoidCallback? onLongPressStart;
+  final VoidCallback? onLongPressEnd;
   final bool isRecording;
   final double size;
   final Color? activeColor;
   final Color? inactiveColor;
+  final bool enableHaptics;
 
   const VoiceInputButton({
     super.key,
     this.onStartRecording,
     this.onStopRecording,
+    this.onLongPressStart,
+    this.onLongPressEnd,
     this.isRecording = false,
     this.size = 80,
     this.activeColor,
     this.inactiveColor,
+    this.enableHaptics = true,
   });
 
   @override
@@ -28,6 +35,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _pulseAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -37,10 +45,17 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       duration: const Duration(milliseconds: 1000),
     );
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Curves.easeInOut,
+      ),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.1, curve: Curves.easeOut),
       ),
     );
 
@@ -73,10 +88,31 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
   }
 
   void _handleTap() {
+    _triggerHaptic();
     if (widget.isRecording) {
       widget.onStopRecording?.call();
     } else {
       widget.onStartRecording?.call();
+    }
+  }
+
+  void _handleLongPressStart() {
+    _triggerHaptic(heavy: true);
+    widget.onLongPressStart?.call();
+  }
+
+  void _handleLongPressEnd() {
+    _triggerHaptic();
+    widget.onLongPressEnd?.call();
+  }
+
+  void _triggerHaptic({bool heavy = false}) {
+    if (!widget.enableHaptics) return;
+    
+    if (heavy) {
+      HapticFeedback.heavyImpact();
+    } else {
+      HapticFeedback.mediumImpact();
     }
   }
 
@@ -90,16 +126,23 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       children: [
         // Ana buton
         AnimatedBuilder(
-          animation: _pulseAnimation,
+          animation: _animationController,
           builder: (context, child) {
             return Transform.scale(
-              scale: widget.isRecording ? _pulseAnimation.value : 1.0,
+              scale: widget.isRecording ? _pulseAnimation.value : _scaleAnimation.value,
               child: child,
             );
           },
           child: GestureDetector(
             onTap: _handleTap,
-            child: Container(
+            onLongPressStart: widget.onLongPressStart != null 
+                ? (_) => _handleLongPressStart() 
+                : null,
+            onLongPressEnd: widget.onLongPressEnd != null 
+                ? (_) => _handleLongPressEnd() 
+                : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               width: widget.size,
               height: widget.size,
               decoration: BoxDecoration(
@@ -126,12 +169,15 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
         const SizedBox(height: 12),
 
         // Durum metni
-        Text(
-          widget.isRecording ? 'Kaydı Durdur' : 'Kayda Başla',
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 200),
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: widget.isRecording ? activeColor : inactiveColor,
+          ),
+          child: Text(
+            widget.isRecording ? 'Kaydı Durdur' : 'Kayda Başla',
           ),
         ),
       ],
@@ -139,19 +185,27 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
   }
 }
 
-/// Dalga animasyonu ile ses kayıt butonu
+/// Dalga animasyonu ile ses kayıt butonu - Gelişmiş versiyon
 class AnimatedVoiceButton extends StatefulWidget {
   final VoidCallback? onStartRecording;
   final VoidCallback? onStopRecording;
+  final VoidCallback? onLongPressStart;
+  final VoidCallback? onLongPressEnd;
   final bool isRecording;
   final double size;
+  final bool enableHaptics;
+  final String? currentText;
 
   const AnimatedVoiceButton({
     super.key,
     this.onStartRecording,
     this.onStopRecording,
+    this.onLongPressStart,
+    this.onLongPressEnd,
     this.isRecording = false,
     this.size = 100,
+    this.enableHaptics = true,
+    this.currentText,
   });
 
   @override
@@ -161,11 +215,15 @@ class AnimatedVoiceButton extends StatefulWidget {
 class _AnimatedVoiceButtonState extends State<AnimatedVoiceButton>
     with TickerProviderStateMixin {
   late AnimationController _waveController;
+  late AnimationController _pulseController;
   late List<Animation<double>> _waveAnimations;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
+    
+    // Dalga animasyonu
     _waveController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -180,6 +238,27 @@ class _AnimatedVoiceButtonState extends State<AnimatedVoiceButton>
         ),
       );
     });
+
+    // Pulse animasyonu
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _pulseController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _pulseController.reverse();
+      } else if (status == AnimationStatus.dismissed && widget.isRecording) {
+        _pulseController.forward();
+      }
+    });
   }
 
   @override
@@ -187,19 +266,24 @@ class _AnimatedVoiceButtonState extends State<AnimatedVoiceButton>
     super.didUpdateWidget(oldWidget);
     if (widget.isRecording && !_waveController.isAnimating) {
       _waveController.repeat();
+      _pulseController.forward();
     } else if (!widget.isRecording) {
       _waveController.stop();
       _waveController.reset();
+      _pulseController.stop();
+      _pulseController.reset();
     }
   }
 
   @override
   void dispose() {
     _waveController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   void _handleTap() {
+    _triggerHaptic();
     if (widget.isRecording) {
       widget.onStopRecording?.call();
     } else {
@@ -207,68 +291,165 @@ class _AnimatedVoiceButtonState extends State<AnimatedVoiceButton>
     }
   }
 
+  void _handleLongPressStart() {
+    _triggerHaptic(heavy: true);
+    widget.onLongPressStart?.call();
+  }
+
+  void _handleLongPressEnd() {
+    _triggerHaptic();
+    widget.onLongPressEnd?.call();
+  }
+
+  void _triggerHaptic({bool heavy = false}) {
+    if (!widget.enableHaptics) return;
+    
+    if (heavy) {
+      HapticFeedback.heavyImpact();
+    } else {
+      HapticFeedback.mediumImpact();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _handleTap,
-      child: SizedBox(
-        width: widget.size * 1.5,
-        height: widget.size * 1.5,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Dalga animasyonları
-            if (widget.isRecording)
-              ...List.generate(3, (index) {
-                return AnimatedBuilder(
-                  animation: _waveAnimations[index],
-                  builder: (context, child) {
-                    return Container(
-                      width: widget.size + (_waveAnimations[index].value * 60),
-                      height: widget.size + (_waveAnimations[index].value * 60),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppConfig.errorColor.withOpacity(
-                            (1 - _waveAnimations[index].value) * 0.5,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Anlık transkripsiyon göstergesi
+        if (widget.isRecording && widget.currentText != null && widget.currentText!.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppConfig.primaryColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.hearing, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    widget.currentText!,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Buton
+        GestureDetector(
+          onTap: _handleTap,
+          onLongPressStart: widget.onLongPressStart != null 
+              ? (_) => _handleLongPressStart() 
+              : null,
+          onLongPressEnd: widget.onLongPressEnd != null 
+              ? (_) => _handleLongPressEnd() 
+              : null,
+          child: SizedBox(
+            width: widget.size * 1.6,
+            height: widget.size * 1.6,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Dalga animasyonları
+                if (widget.isRecording)
+                  ...List.generate(3, (index) {
+                    return AnimatedBuilder(
+                      animation: _waveAnimations[index],
+                      builder: (context, child) {
+                        return Container(
+                          width: widget.size + (_waveAnimations[index].value * 60),
+                          height: widget.size + (_waveAnimations[index].value * 60),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppConfig.errorColor.withOpacity(
+                                (1 - _waveAnimations[index].value) * 0.5,
+                              ),
+                              width: 2,
+                            ),
                           ),
-                          width: 2,
-                        ),
-                      ),
+                        );
+                      },
+                    );
+                  }),
+
+                // Ana buton
+                AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: widget.isRecording ? _pulseAnimation.value : 1.0,
+                      child: child,
                     );
                   },
-                );
-              }),
-
-            // Ana buton
-            Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.isRecording
-                    ? AppConfig.errorColor
-                    : AppConfig.primaryColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: (widget.isRecording
-                            ? AppConfig.errorColor
-                            : AppConfig.primaryColor)
-                        .withOpacity(0.3),
-                    spreadRadius: 4,
-                    blurRadius: 8,
+                  child: Container(
+                    width: widget.size,
+                    height: widget.size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: widget.isRecording
+                          ? AppConfig.errorColor
+                          : AppConfig.primaryColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (widget.isRecording
+                                  ? AppConfig.errorColor
+                                  : AppConfig.primaryColor)
+                              .withOpacity(0.3),
+                          spreadRadius: 4,
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      widget.isRecording ? Icons.stop : Icons.mic,
+                      size: widget.size * 0.45,
+                      color: Colors.white,
+                    ),
                   ),
-                ],
-              ),
-              child: Icon(
-                widget.isRecording ? Icons.stop : Icons.mic,
-                size: widget.size * 0.45,
-                color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Durum metni
+        Text(
+          widget.isRecording ? 'Kaydı Durdur' : 'Kayda Başla',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: widget.isRecording ? AppConfig.errorColor : AppConfig.primaryColor,
+          ),
+        ),
+
+        // İpucu metni
+        if (!widget.isRecording)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Mikrofona basarak konuşmaya başlayın',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }
