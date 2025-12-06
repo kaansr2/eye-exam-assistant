@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/home_screen.dart';
 import 'screens/patient_search_screen.dart';
 import 'screens/recording_screen.dart';
@@ -26,6 +27,17 @@ class EyeExamAssistantApp extends StatelessWidget {
       child: MaterialApp(
         title: AppConfig.appName,
         debugShowCheckedModeBanner: false,
+        // Localization support
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('tr', 'TR'), // Türkçe
+          Locale('en', 'US'), // İngilizce (fallback)
+        ],
+        locale: const Locale('tr', 'TR'), // Varsayılan Türkçe
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: AppConfig.primaryColor,
