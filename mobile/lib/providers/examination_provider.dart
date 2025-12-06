@@ -152,13 +152,16 @@ class ExaminationProvider extends ChangeNotifier {
   IopData? getIopData() {
     if (_parsedFindings.isEmpty) return null;
     
+    // Helper function to extract numeric value from IOP string
+    double? parseIopValue(dynamic value) {
+      if (value == null) return null;
+      final str = value.toString().replaceAll(RegExp(r'[^\d.]'), '');
+      return double.tryParse(str);
+    }
+    
     return IopData(
-      sagIop: _parsedFindings['iop_od'] != null 
-          ? double.tryParse(_parsedFindings['iop_od'].toString().replaceAll(RegExp(r'[^\d.]'), ''))
-          : null,
-      solIop: _parsedFindings['iop_os'] != null
-          ? double.tryParse(_parsedFindings['iop_os'].toString().replaceAll(RegExp(r'[^\d.]'), ''))
-          : null,
+      sagIop: parseIopValue(_parsedFindings['iop_od']),
+      solIop: parseIopValue(_parsedFindings['iop_os']),
     );
   }
 

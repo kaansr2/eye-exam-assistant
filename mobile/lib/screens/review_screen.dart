@@ -460,6 +460,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             itemBuilder: (context, index) {
               final image = images[index];
               final eyeLabel = image['eye'] == 'right' ? 'OD' : 'OS';
+              final imagePath = image['path'] as String?;
               
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -471,16 +472,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(8),
-                        image: image['path'] != null 
-                            ? DecorationImage(
-                                image: FileImage(File(image['path'])),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
                       ),
-                      child: image['path'] == null
-                          ? Icon(Icons.image, color: Colors.grey[600], size: 32)
-                          : null,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: imagePath != null && File(imagePath).existsSync()
+                            ? Image.file(
+                                File(imagePath),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(Icons.broken_image, color: Colors.grey[600], size: 32);
+                                },
+                              )
+                            : Icon(Icons.image, color: Colors.grey[600], size: 32),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(

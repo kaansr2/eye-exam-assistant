@@ -3,6 +3,35 @@ import 'dart:core';
 /// Service for parsing speech transcript into structured medical data
 /// Extracts medical findings from Turkish speech text
 class TranscriptParser {
+  // Regex patterns for vision acuity
+  static final _rightVisionPatterns = [
+    RegExp(r'sağ\s*göz(?:\s*görme\s*keskinliği)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'(?:od|o\.?d\.?)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'görme\s*keskinliği\s*sağ[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+  ];
+
+  static final _leftVisionPatterns = [
+    RegExp(r'sol\s*göz(?:\s*görme\s*keskinliği)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'(?:os|o\.?s\.?)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+    RegExp(r'görme\s*keskinliği\s*sol[:\s]*(\d+[.,]\d+)', caseSensitive: false),
+  ];
+
+  // Regex patterns for IOP
+  static final _iopCombinedPatterns = [
+    RegExp(r'(?:göz\s*içi\s*basıncı|basınç|iop).*?sağ(?:da)?[:\s]*(\d+).*?sol(?:da)?[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'(?:basınç|iop)[:\s]*(\d+)\s*[/\\]\s*(\d+)', caseSensitive: false),
+  ];
+
+  static final _rightIopPatterns = [
+    RegExp(r'(?:sağ|od).*?basınç[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'basınç.*?(?:sağ|od)[:\s]*(\d+)', caseSensitive: false),
+  ];
+
+  static final _leftIopPatterns = [
+    RegExp(r'(?:sol|os).*?basınç[:\s]*(\d+)', caseSensitive: false),
+    RegExp(r'basınç.*?(?:sol|os)[:\s]*(\d+)', caseSensitive: false),
+  ];
+
   /// Parse transcript into structured findings
   static Map<String, dynamic> parse(String transcript) {
     if (transcript.isEmpty) return {};
@@ -33,13 +62,7 @@ class TranscriptParser {
     final findings = <String, dynamic>{};
 
     // Patterns for right eye (sağ göz, OD)
-    final rightPatterns = [
-      RegExp(r'sağ\s*göz(?:\s*görme\s*keskinliği)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
-      RegExp(r'(?:od|o\.?d\.?)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
-      RegExp(r'görme\s*keskinliği\s*sağ[:\s]*(\d+[.,]\d+)', caseSensitive: false),
-    ];
-
-    for (final pattern in rightPatterns) {
+    for (final pattern in _rightVisionPatterns) {
       final match = pattern.firstMatch(text);
       if (match != null) {
         findings['gorme_keskinligi_od'] = match.group(1)?.replaceAll(',', '.');
@@ -48,13 +71,7 @@ class TranscriptParser {
     }
 
     // Patterns for left eye (sol göz, OS)
-    final leftPatterns = [
-      RegExp(r'sol\s*göz(?:\s*görme\s*keskinliği)?[:\s]*(\d+[.,]\d+)', caseSensitive: false),
-      RegExp(r'(?:os|o\.?s\.?)[:\s]*(\d+[.,]\d+)', caseSensitive: false),
-      RegExp(r'görme\s*keskinliği\s*sol[:\s]*(\d+[.,]\d+)', caseSensitive: false),
-    ];
-
-    for (final pattern in leftPatterns) {
+    for (final pattern in _leftVisionPatterns) {
       final match = pattern.firstMatch(text);
       if (match != null) {
         findings['gorme_keskinligi_os'] = match.group(1)?.replaceAll(',', '.');
@@ -69,15 +86,8 @@ class TranscriptParser {
   static Map<String, dynamic> _parseIOP(String text) {
     final findings = <String, dynamic>{};
 
-    // Patterns for IOP
-    final iopPatterns = [
-      // "göz içi basıncı sağda 18 solda 16"
-      RegExp(r'(?:göz\s*içi\s*basıncı|basınç|iop).*?sağ(?:da)?[:\s]*(\d+).*?sol(?:da)?[:\s]*(\d+)', caseSensitive: false),
-      // "basınç 18/16" or "IOP 18/16"
-      RegExp(r'(?:basınç|iop)[:\s]*(\d+)\s*[/\\]\s*(\d+)', caseSensitive: false),
-    ];
-
-    for (final pattern in iopPatterns) {
+    // Patterns for IOP - combined (both eyes)
+    for (final pattern in _iopCombinedPatterns) {
       final match = pattern.firstMatch(text);
       if (match != null) {
         findings['iop_od'] = '${match.group(1)} mmHg';
@@ -86,13 +96,8 @@ class TranscriptParser {
       }
     }
 
-    // Individual patterns
-    final rightIopPatterns = [
-      RegExp(r'(?:sağ|od).*?basınç[:\s]*(\d+)', caseSensitive: false),
-      RegExp(r'basınç.*?(?:sağ|od)[:\s]*(\d+)', caseSensitive: false),
-    ];
-
-    for (final pattern in rightIopPatterns) {
+    // Individual patterns - right eye
+    for (final pattern in _rightIopPatterns) {
       final match = pattern.firstMatch(text);
       if (match != null) {
         findings['iop_od'] = '${match.group(1)} mmHg';
@@ -100,12 +105,8 @@ class TranscriptParser {
       }
     }
 
-    final leftIopPatterns = [
-      RegExp(r'(?:sol|os).*?basınç[:\s]*(\d+)', caseSensitive: false),
-      RegExp(r'basınç.*?(?:sol|os)[:\s]*(\d+)', caseSensitive: false),
-    ];
-
-    for (final pattern in leftIopPatterns) {
+    // Individual patterns - left eye
+    for (final pattern in _leftIopPatterns) {
       final match = pattern.firstMatch(text);
       if (match != null) {
         findings['iop_os'] = '${match.group(1)} mmHg';
