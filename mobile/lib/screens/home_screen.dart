@@ -6,6 +6,7 @@ import '../utils/constants.dart';
 import '../providers/examination_provider.dart';
 import '../providers/patient_provider.dart';
 import '../models/examination.dart';
+import '../models/patient.dart';
 import 'examination_detail_screen.dart';
 
 /// Ana ekran - Yeni muayene başlatma ve son muayeneler listesi
